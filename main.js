@@ -1,7 +1,6 @@
-import { TARIFFE_REGIONI, STAGIONALITA, SERVIZI_ACCESSORI } from './data.js';
-import Chart from 'chart.js/auto';
-import { jsPDF } from 'jspdf';
-import html2canvas from 'html2canvas';
+// CDN Globals used: Chart, jspdf, html2canvas
+const { jsPDF } = window.jspdf || {};
+
 
 let currentScreen = 1;
 const totalScreens = 6;

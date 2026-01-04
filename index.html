@@ -11,6 +11,10 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="./style.css">
+  <!-- CDN Dependencies for GitHub Pages compatibility -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
 </head>
 
 <body>
@@ -24,7 +28,7 @@
       <!-- Screen 1: Welcome -->
       <div id="screen-1" class="screen welcome-screen active">
         <div class="badge-bonus">Bonus Esclusivo Ebook</div>
-        <img src="/logo.png" alt="Logo Anti-Bolletta" style="width: 120px; margin-bottom: 20px;">
+        <img src="./logo.png" alt="Logo Anti-Bolletta" style="width: 120px; margin-bottom: 20px;">
         <h1>Sistema Anti-Bolletta</h1>
         <p class="subtitle">Applica il <strong>Metodo 3F</strong> per individuare le Clausole Killer e abbattere i costi
           energetici in 2 minuti.</p>
@@ -209,7 +213,8 @@
     <!-- Filled before capture -->
   </div>
 
-  <script type="module" src="./main.js"></script>
+  <script src="./data.js"></script>
+  <script src="./main.js"></script>
 </body>
 
 </html>
