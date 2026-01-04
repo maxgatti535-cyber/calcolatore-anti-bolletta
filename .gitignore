@@ -1,0 +1,8 @@
+node_modules
+dist
+.env
+.DS_Store
+.agent
+*.pdf
+# Se non vuoi caricare l'ebook originale su GitHub pubblico
+ebook_sistema anti bolletta.pdf

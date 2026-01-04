@@ -1,0 +1,215 @@
+<!DOCTYPE html>
+<html lang="it">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Calcolatore Anti-Bolletta | Risparmia sull'energia</title>
+  <meta name="description"
+    content="Scopri quanto puoi risparmiare sulle tue bollette di luce, gas e internet con il Metodo 3F.">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="./style.css">
+</head>
+
+<body>
+  <div id="app">
+    <div class="progress-container">
+      <div id="progress-bar" class="progress-bar"></div>
+    </div>
+
+    <div class="container">
+
+      <!-- Screen 1: Welcome -->
+      <div id="screen-1" class="screen welcome-screen active">
+        <div class="badge-bonus">Bonus Esclusivo Ebook</div>
+        <img src="/logo.png" alt="Logo Anti-Bolletta" style="width: 120px; margin-bottom: 20px;">
+        <h1>Sistema Anti-Bolletta</h1>
+        <p class="subtitle">Applica il <strong>Metodo 3F</strong> per individuare le Clausole Killer e abbattere i costi
+          energetici in 2 minuti.</p>
+        <button class="btn" id="btn-start" onclick="nextScreen()">Inizia Analisi 3F</button>
+      </div>
+
+      <!-- Screen 2: Current Data -->
+      <div id="screen-2" class="screen">
+        <p class="step-indicator">Fase 1: Filtra</p>
+        <h2>Analisi dei Costi Attuali</h2>
+        <p class="subtitle">Inserisci le tue spese medie mensili per identificare sprechi nascosti.</p>
+
+        <div class="form-group">
+          <label for="spesa-luce">Spesa media mensile LUCE (€)</label>
+          <input type="number" id="spesa-luce" placeholder="Es. 80">
+          <p class="hint">Guarda l'ultima bolletta per un dato preciso</p>
+        </div>
+
+        <div class="form-group">
+          <label for="spesa-gas">Spesa media mensile GAS (€)</label>
+          <input type="number" id="spesa-gas" placeholder="Es. 120">
+          <p class="hint">Se non hai gas (solo induzione), inserisci 0</p>
+        </div>
+
+        <div class="form-group">
+          <label for="spesa-internet">Internet e Telefonia (€)</label>
+          <input type="number" id="spesa-internet" placeholder="Es. 35">
+          <p class="hint">Adsl, Fibra, SIM, ecc.</p>
+        </div>
+
+        <button class="btn" id="btn-next-2" onclick="nextScreen()">Continua</button>
+      </div>
+
+      <!-- Screen 3: Contract Type -->
+      <div id="screen-3" class="screen">
+        <p class="step-indicator">Fase 1: Filtra (Contratto)</p>
+        <h2>Individua le Clausole Killer</h2>
+        <p class="subtitle">La struttura del tuo contratto nasconde spesso costi fissi (PCV) fuori mercato.</p>
+
+        <div class="radio-group" id="contratto-group">
+          <label class="option-card" id="opt-tutelato" onclick="selectOption('tipoContratto', 'Tutelato', this)">
+            <input type="radio" name="contratto" value="Tutelato">
+            <div style="flex:1">
+              <strong>Mercato Tutelato</strong>
+              <p class="hint">Prezzi ARERA (In via di superamento)</p>
+            </div>
+          </label>
+          <label class="option-card" id="opt-libero" onclick="selectOption('tipoContratto', 'Libero', this)">
+            <input type="radio" name="contratto" value="Libero">
+            <div style="flex:1">
+              <strong>Mercato Libero</strong>
+              <p class="hint">Fornitore Privato (Possibili Rimodulazioni)</p>
+            </div>
+          </label>
+          <label class="option-card" id="opt-nonso" onclick="selectOption('tipoContratto', 'Non so', this)">
+            <input type="radio" name="contratto" value="Non so">
+            <div style="flex:1">
+              <strong>Non lo so</strong>
+            </div>
+          </label>
+        </div>
+
+        <button class="btn" id="btn-next-3" onclick="nextScreen()">Continua</button>
+        <button class="btn btn-secondary" onclick="prevScreen()">Indietro</button>
+      </div>
+
+      <!-- Screen 4: Region -->
+      <div id="screen-4" class="screen">
+        <p class="step-indicator">Fase 1: Filtra (Geolocalizzazione)</p>
+        <h2>Dove viene consumata l'energia?</h2>
+        <p class="subtitle">Le componenti di trasporto e gestione variano in base alla zona geografica.</p>
+
+        <div class="form-group">
+          <label for="regione-select">Seleziona la tua regione</label>
+          <select id="regione-select">
+            <option value="" disabled selected>Scegli...</option>
+            <!-- Options will be populated by JS -->
+          </select>
+        </div>
+
+        <button class="btn" id="btn-next-4" onclick="nextScreen()">Continua</button>
+        <button class="btn btn-secondary" onclick="prevScreen()">Indietro</button>
+      </div>
+
+      <!-- Screen 5: Add-on Services -->
+      <div id="screen-5" class="screen">
+        <p class="step-indicator">Fase 2: Fronteggia (Servizi Parassiti)</p>
+        <h2>Elimina i Costi Nascosti</h2>
+        <p class="subtitle">Identifica ogni servizio extra che gonfia le tue fatture senza darti valore reale.</p>
+
+        <div class="checkbox-group" id="servizi-group">
+          <!-- Servizi from data.js will be populated here -->
+        </div>
+
+        <button class="btn" id="btn-next-5" onclick="nextScreen()">Continua</button>
+        <button class="btn btn-secondary" onclick="prevScreen()">Indietro</button>
+      </div>
+
+      <!-- Screen 6: Usage Profile -->
+      <div id="screen-6" class="screen">
+        <p class="step-indicator">Fase 3: Fissa (Profilo d'Uso)</p>
+        <h2>Ottimizza il tuo Profilo</h2>
+        <p class="subtitle">Adatta il tuo stile di consumo per proteggere il risparmio nel lungo periodo.</p>
+
+        <div class="radio-group" id="profilo-group">
+          <label class="option-card" id="opt-diurno" onclick="selectOption('profilo', 'Diurno', this)">
+            <input type="radio" name="profilo" value="Diurno">
+            <div style="flex:1">
+              <strong>Mattina/Pomeriggio (8-18)</strong>
+              <p class="hint">Lavoro da casa o pensionati</p>
+            </div>
+          </label>
+          <label class="option-card" id="opt-notturno" onclick="selectOption('profilo', 'Notturno', this)">
+            <input type="radio" name="profilo" value="Notturno">
+            <div style="flex:1">
+              <strong>Sera/Notte (18-8)</strong>
+              <p class="hint">Torni a casa tardi e usi elettrodomestici di notte</p>
+            </div>
+          </label>
+          <label class="option-card" id="opt-sempre" onclick="selectOption('profilo', 'Sempre', this)">
+            <input type="radio" name="profilo" value="Sempre">
+            <div style="flex:1">
+              <strong>Sempre presente</strong>
+            </div>
+          </label>
+        </div>
+
+        <button class="btn" id="btn-analyze" onclick="analyze()">Analizza Risparmio</button>
+        <button class="btn btn-secondary" onclick="prevScreen()">Indietro</button>
+      </div>
+
+      <!-- Screen 7: Results -->
+      <div id="screen-7" class="screen">
+        <h1>I Tuoi Risultati</h1>
+
+        <div class="result-card">
+          <div class="result-header">📊 Situazione Attuale</div>
+          <div class="result-body" id="attuale-summary">
+            <!-- Filled by JS -->
+          </div>
+        </div>
+
+        <div class="result-card">
+          <div class="result-header">🎯 Sprechi Identificati</div>
+          <div class="result-body" id="sprechi-list">
+            <!-- Filled by JS -->
+          </div>
+        </div>
+
+        <div class="result-card">
+          <div class="result-header">📈 Simulazione Annuale</div>
+          <div class="result-body">
+            <div class="chart-container">
+              <canvas id="savingsChart"></canvas>
+            </div>
+            <div id="savings-summary" style="margin-top:20px; text-align:center">
+              <!-- Filled by JS -->
+            </div>
+          </div>
+        </div>
+
+        <div class="result-card">
+          <div class="result-header">✅ Azioni Prioritarie</div>
+          <div class="result-body" id="azioni-list">
+            <!-- Filled by JS -->
+          </div>
+        </div>
+
+        <button class="btn" onclick="generatePDF()">📥 Scarica Report PDF</button>
+        <button class="btn btn-secondary" onclick="resetCalculator()">↩️ Nuovo Calcolo</button>
+      </div>
+
+    </div>
+    <div class="footer-app">
+      Basato sul Metodo 3F - Sistema Anti-Bolletta &copy; 2026
+    </div>
+  </div>
+
+  <!-- Hidden element for PDF capture -->
+  <div id="pdf-content"
+    style="position: absolute; left: -9999px; width: 600px; padding: 40px; background: white; font-family: sans-serif;">
+    <!-- Filled before capture -->
+  </div>
+
+  <script type="module" src="./main.js"></script>
+</body>
+
+</html>
