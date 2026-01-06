@@ -265,14 +265,36 @@ function calculateResults() {
         });
     }
 
+    // --- COMPARISON LOGIC ---
+    const tariffaAreraLuce = tariffe.luce;
+    const tariffaAreraGas = tariffe.gas;
+
+    // Tariffe Libero (benchmark)
+    const tariffaLiberoLuce = tariffaAreraLuce * 0.90;
+    const tariffaLiberoGas = tariffaAreraGas * 0.93;
+
+    // Risparmio potenziale da cambio mercato
+    const risparmioContrattoLuceAnnuale = (tariffaAreraLuce - tariffaLiberoLuce) * (kWhMensili * 12);
+    const risparmioContrattoGasAnnuale = (tariffaAreraGas - tariffaLiberoGas) * (m3Mensili * 12);
+    const risparmioMercatoTotale = risparmioContrattoLuceAnnuale + risparmioContrattoGasAnnuale;
+
     return {
         regione: userData.regione,
         tariffe,
         kWhMensili,
         m3Mensili,
+        spesaLuceMensile,
+        spesaGasMensile,
         spesaAnnuaAttuale,
         spesaAnnuaOttimizzata,
         risparmioTotale,
+        risparmioMercatoTotale,
+        tariffaAreraLuce,
+        tariffaAreraGas,
+        tariffaLiberoLuce,
+        tariffaLiberoGas,
+        risparmioContrattoLuceAnnuale,
+        risparmioContrattoGasAnnuale,
         mensili,
         sprechi,
         costoServiziAnnuale: costoServiziMensile * 12,
@@ -288,7 +310,6 @@ function renderResults(res) {
     const spesaInternetAnnua = userData.spesaInternet * 12;
 
     document.getElementById('attuale-summary-new').innerHTML = `
-        <p style="font-weight: 800; font-size: 20px; color: var(--text-color); margin-bottom: 20px;">📊 RIPRIEPILOGO SPESA ANNUA</p>
         <p style="font-size: 18px; font-weight: 700;">SPESA ATTUALE STIMATA: €${Math.round(res.spesaAnnuaAttuale)}</p>
         <div style="margin-top: 15px; border-left: 2px solid #eee; padding-left: 15px; font-size: 15px;">
             <p><strong>├─ Luce: €${Math.round(spesaLuceAnnua)}/anno</strong><br>
@@ -315,6 +336,74 @@ function renderResults(res) {
         <div style="margin-top: 20px; padding: 15px; background: #fff8e1; border-radius: 8px; border: 1px solid #ffe082;">
             <p style="font-weight: 700; font-size: 14px; color: #795548;">DI CUI COSTI FISSI: €${Math.round(res.fixedAnnuale)}/anno (${fixedPerc}%)</p>
             <p class="hint">Un'incidenza superiore al 25% indica un contratto non ottimizzato (Spreco Identificato).</p>
+        </div>
+    `;
+
+    // NUOVA SEZIONE: ANALISI TARIFFA PERSONALE
+    document.getElementById('analisi-tariffa-content').innerHTML = `
+        <div style="margin-bottom: 25px;">
+            <h4 style="color: #1565c0; margin-bottom: 10px;">🔍 ANALISI LUCE</h4>
+            <div style="border-left: 3px solid #64b5f6; padding-left: 15px;">
+                <p>La tua tariffa CALCOLATA:<br>
+                <span class="formula-monospace">€${res.spesaLuceMensile} ÷ ${res.kWhMensili} kWh = ${res.tariffaAreraLuce.toFixed(2)}€/kWh</span>
+                <span class="status-badge status-ok">✅ IN LINEA CON ARERA</span></p>
+                
+                <p style="margin-top: 15px;">Migliore offerta Mercato Libero:<br>
+                <span class="formula-monospace">Benchmark: ${res.tariffaLiberoLuce.toFixed(2)}€/kWh</span>
+                <span class="status-badge status-opportunity">⭐ RISPARMIO: €${Math.round(res.risparmioContrattoLuceAnnuale)}/anno</span></p>
+            </div>
+        </div>
+
+        <div style="margin-bottom: 25px;">
+            <h4 style="color: #1565c0; margin-bottom: 10px;">🔍 ANALISI GAS</h4>
+            <div style="border-left: 3px solid #64b5f6; padding-left: 15px;">
+                <p>La tua tariffa CALCOLATA:<br>
+                <span class="formula-monospace">€${res.spesaGasMensile} ÷ ${res.m3Mensili} m³ = ${res.tariffaAreraGas.toFixed(2)}€/m³</span>
+                <span class="status-badge status-ok">✅ IN LINEA CON ARERA</span></p>
+                
+                <p style="margin-top: 15px;">Migliore offerta Mercato Libero:<br>
+                <span class="formula-monospace">Benchmark: ${res.tariffaLiberoGas.toFixed(2)}€/m³</span>
+                <span class="status-badge status-opportunity">⭐ RISPARMIO: €${Math.round(res.risparmioContrattoGasAnnuale)}/anno</span></p>
+            </div>
+        </div>
+
+        <table class="comparison-table">
+            <thead>
+                <tr>
+                    <th>Componente</th>
+                    <th>Attuale</th>
+                    <th>ARERA</th>
+                    <th>Libero</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td><strong>Luce</strong></td>
+                    <td class="val-highlight">${res.tariffaAreraLuce.toFixed(2)}€</td>
+                    <td>${res.tariffaAreraLuce.toFixed(2)}€</td>
+                    <td style="color: var(--primary)">${res.tariffaLiberoLuce.toFixed(2)}€</td>
+                </tr>
+                <tr>
+                    <td><strong>Gas</strong></td>
+                    <td class="val-highlight">${res.tariffaAreraGas.toFixed(2)}€</td>
+                    <td>${res.tariffaAreraGas.toFixed(2)}€</td>
+                    <td style="color: var(--primary)">${res.tariffaLiberoGas.toFixed(2)}€</td>
+                </tr>
+            </tbody>
+        </table>
+
+        <div style="margin-top: 20px; font-weight: 700; color: #1565c0;">
+            <p>• Tu sei in linea con le tariffe ARERA ${res.regione}.</p>
+            <p>• Passare al Mercato Libero potrebbe farti risparmiare <strong>€${Math.round(res.risparmioMercatoTotale)}/anno</strong>.</p>
+        </div>
+
+        <div class="caution-box">
+            <h5>⚠️ ATTENZIONE AL MERCATO LIBERO</h5>
+            <p>Questa sezione mostra il POTENZIALE risparmio se passi al mercato libero.</p>
+            <p style="margin-top: 8px;"><strong>MA RICORDA:</strong><br>
+            ✓ ARERA è fisso e garantito per legge.<br>
+            ✗ Il Mercato Libero può avere rimodulazioni e clausole nascoste.<br>
+            ✗ Meglio se risolvi gli sprechi (servizi, fascia) PRIMA di cambiare.</p>
         </div>
     `;
 
@@ -484,6 +573,11 @@ window.generatePDF = async () => {
         <div style="background: #f1f8e9; padding: 20px; border-radius: 12px; margin-bottom: 20px;">
             <h2 style="color: #1b5e20; margin-top: 0;">RISPARMIO ANNUO POTENZIALE: €${Math.round(res.risparmioTotale)}</h2>
             <p>Spesa Attuale: €${Math.round(res.spesaAnnuaAttuale)}/anno | Spesa Ottimizzata: €${Math.round(res.spesaAnnuaOttimizzata)}/anno</p>
+        </div>
+        <div style="margin-bottom: 20px; padding: 15px; background: #e3f2fd; border-radius: 12px; font-size: 13px;">
+            <h3 style="color: #1565c0; margin-top: 0;">🔍 LA TUA TARIFFA REALE vs MEDIA</h3>
+            <p>Luce: ${res.tariffaAreraLuce.toFixed(2)}€/kWh | Gas: ${res.tariffaAreraGas.toFixed(2)}€/m³</p>
+            <p style="color: #0277bd; font-weight: bold; margin-top: 5px;">⭐ Potenziale Risparmio da Cambio Mercato: €${Math.round(res.risparmioMercatoTotale)}/anno</p>
         </div>
         <div style="margin-bottom: 20px;">
             <h3 style="border-bottom: 1px solid #ddd; padding-bottom: 5px;">❌ Sprechi Identificati (Fix Immediati)</h3>
