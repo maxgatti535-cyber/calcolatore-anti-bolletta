@@ -35,10 +35,28 @@
         <button class="btn" id="btn-start" onclick="nextScreen()">Inizia Analisi 3F</button>
       </div>
 
-      <!-- Screen 2: Current Data -->
+      <!-- Screen 2: Region (NUOVA POSIZIONE) -->
       <div id="screen-2" class="screen">
+        <p class="step-indicator">Fase 1: Filtra (Geolocalizzazione)</p>
+        <h2>Dove vivi in Italia?</h2>
+        <p class="subtitle">Le tariffe variano per regione. Indica la tua per calcoli precisi.</p>
+
+        <div class="form-group">
+          <label for="regione-select">Seleziona la tua regione</label>
+          <select id="regione-select">
+            <option value="" disabled selected>Scegli...</option>
+            <!-- Options will be populated by JS -->
+          </select>
+        </div>
+
+        <button class="btn" id="btn-next-2" onclick="nextScreen()">Continua</button>
+        <button class="btn btn-secondary" onclick="prevScreen()">Indietro</button>
+      </div>
+
+      <!-- Screen 3: Current Data (SPOSTATA) -->
+      <div id="screen-3" class="screen">
         <p class="step-indicator">Fase 1: Filtra</p>
-        <h2>Analisi dei Costi Attuali</h2>
+        <h2>Quanto stai pagando adesso?</h2>
         <p class="subtitle">Inserisci le tue spese medie mensili per identificare sprechi nascosti.</p>
 
         <div class="form-group">
@@ -59,13 +77,14 @@
           <p class="hint">Adsl, Fibra, SIM, ecc.</p>
         </div>
 
-        <button class="btn" id="btn-next-2" onclick="nextScreen()">Continua</button>
+        <button class="btn" id="btn-next-3" onclick="nextScreen()">Continua</button>
+        <button class="btn btn-secondary" onclick="prevScreen()">Indietro</button>
       </div>
 
-      <!-- Screen 3: Contract Type -->
-      <div id="screen-3" class="screen">
+      <!-- Screen 4: Contract Type -->
+      <div id="screen-4" class="screen">
         <p class="step-indicator">Fase 1: Filtra (Contratto)</p>
-        <h2>Individua le Clausole Killer</h2>
+        <h2>Qual è il tuo tipo di contratto?</h2>
         <p class="subtitle">La struttura del tuo contratto nasconde spesso costi fissi (PCV) fuori mercato.</p>
 
         <div class="radio-group" id="contratto-group">
@@ -91,46 +110,14 @@
           </label>
         </div>
 
-        <button class="btn" id="btn-next-3" onclick="nextScreen()">Continua</button>
-        <button class="btn btn-secondary" onclick="prevScreen()">Indietro</button>
-      </div>
-
-      <!-- Screen 4: Region -->
-      <div id="screen-4" class="screen">
-        <p class="step-indicator">Fase 1: Filtra (Geolocalizzazione)</p>
-        <h2>Dove viene consumata l'energia?</h2>
-        <p class="subtitle">Le componenti di trasporto e gestione variano in base alla zona geografica.</p>
-
-        <div class="form-group">
-          <label for="regione-select">Seleziona la tua regione</label>
-          <select id="regione-select">
-            <option value="" disabled selected>Scegli...</option>
-            <!-- Options will be populated by JS -->
-          </select>
-        </div>
-
         <button class="btn" id="btn-next-4" onclick="nextScreen()">Continua</button>
         <button class="btn btn-secondary" onclick="prevScreen()">Indietro</button>
       </div>
 
-      <!-- Screen 5: Add-on Services -->
+      <!-- Screen 5: Usage Profile -->
       <div id="screen-5" class="screen">
-        <p class="step-indicator">Fase 2: Fronteggia (Servizi Parassiti)</p>
-        <h2>Elimina i Costi Nascosti</h2>
-        <p class="subtitle">Identifica ogni servizio extra che gonfia le tue fatture senza darti valore reale.</p>
-
-        <div class="checkbox-group" id="servizi-group">
-          <!-- Servizi from data.js will be populated here -->
-        </div>
-
-        <button class="btn" id="btn-next-5" onclick="nextScreen()">Continua</button>
-        <button class="btn btn-secondary" onclick="prevScreen()">Indietro</button>
-      </div>
-
-      <!-- Screen 6: Usage Profile -->
-      <div id="screen-6" class="screen">
         <p class="step-indicator">Fase 3: Fissa (Profilo d'Uso)</p>
-        <h2>Ottimizza il tuo Profilo</h2>
+        <h2>Quando usi più energia?</h2>
         <p class="subtitle">Adatta il tuo stile di consumo per proteggere il risparmio nel lungo periodo.</p>
 
         <div class="radio-group" id="profilo-group">
@@ -151,55 +138,141 @@
           <label class="option-card" id="opt-sempre" onclick="selectOption('profilo', 'Sempre', this)">
             <input type="radio" name="profilo" value="Sempre">
             <div style="flex:1">
-              <strong>Sempre presente</strong>
+              <strong>Sempre presente in casa</strong>
             </div>
           </label>
         </div>
 
-        <button class="btn" id="btn-analyze" onclick="analyze()">Analizza Risparmio</button>
+        <button class="btn" id="btn-next-5" onclick="nextScreen()">Continua</button>
         <button class="btn btn-secondary" onclick="prevScreen()">Indietro</button>
       </div>
 
-      <!-- Screen 7: Results -->
+      <!-- Screen 6: Accessory Services -->
+      <div id="screen-6" class="screen">
+        <p class="step-indicator">Fase 2: Fronteggia (Servizi Parassiti)</p>
+        <h2>Hai servizi accessori?</h2>
+        <p class="subtitle">Identifica ogni servizio extra che gonfia le tue fatture senza darti valore reale.</p>
+
+        <div class="checkbox-group" id="servizi-group">
+          <!-- Servizi from data.js will be populated here -->
+        </div>
+
+        <button class="btn" id="btn-next-6" onclick="nextScreen()">Continua</button>
+        <button class="btn btn-secondary" onclick="prevScreen()">Indietro</button>
+      </div>
+
+      <!-- Screen 7: Seasonality Adjustment (NUOVA!) -->
       <div id="screen-7" class="screen">
+        <p class="step-indicator">Fase 4: Stagionalità</p>
+        <h2 id="seasonality-title">Verifichiamo la stagionalità della tua regione</h2>
+        <div id="seasonality-estimate-box" class="info-box" style="margin-bottom: 20px;">
+          <!-- Content populated by JS -->
+        </div>
+
+        <div class="radio-group" id="stagionalita-group">
+          <label class="option-card" id="opt-precise" onclick="selectOption('fattoreAggiustamento', 1.0, this)">
+            <input type="radio" name="stagionalita" value="1.0">
+            <div style="flex:1">
+              <strong>Sì, è preciso</strong>
+            </div>
+          </label>
+          <label class="option-card" id="opt-colder" onclick="selectOption('fattoreAggiustamento', 1.2, this)">
+            <input type="radio" name="stagionalita" value="1.2">
+            <div style="flex:1">
+              <strong>No, il mio inverno è PIÙ FREDDO</strong>
+              <p class="hint">(costi il 50%+ in più)</p>
+            </div>
+          </label>
+          <label class="option-card" id="opt-warmer" onclick="selectOption('fattoreAggiustamento', 0.6, this)">
+            <input type="radio" name="stagionalita" value="0.6">
+            <div style="flex:1">
+              <strong>No, il mio inverno è MENO FREDDO</strong>
+              <p class="hint">(costi il 20-30% in più)</p>
+            </div>
+          </label>
+          <label class="option-card" id="opt-mild" onclick="selectOption('fattoreAggiustamento', 0.0, this)">
+            <input type="radio" name="stagionalita" value="0.0">
+            <div style="flex:1">
+              <strong>No, vivo in zona molto mite</strong>
+              <p class="hint">(inverno costumi normali)</p>
+            </div>
+          </label>
+        </div>
+
+        <button class="btn" id="btn-analyze" onclick="analyze()">Applica Aggiustamento</button>
+        <button class="btn btn-secondary" onclick="prevScreen()">Indietro</button>
+      </div>
+
+
+      <!-- Screen 8: Results -->
+      <div id="screen-8" class="screen">
         <h1>I Tuoi Risultati</h1>
 
+        <!-- SEZIONE A: SITUAZIONE ATTUALE -->
         <div class="result-card">
-          <div class="result-header">📊 Situazione Attuale</div>
-          <div class="result-body" id="attuale-summary">
+          <div class="result-header">📊 LA TUA SITUAZIONE ATTUALE</div>
+          <div class="result-body" id="attuale-summary-new">
             <!-- Filled by JS -->
           </div>
         </div>
 
+        <!-- SEZIONE B: AREE DI MIGLIORAMENTO -->
         <div class="result-card">
-          <div class="result-header">🎯 Sprechi Identificati</div>
-          <div class="result-body" id="sprechi-list">
+          <div class="result-header">🎯 SPRECHI IDENTIFICATI</div>
+          <div class="result-body" id="sprechi-list-new">
             <!-- Filled by JS -->
           </div>
         </div>
 
+        <!-- SEZIONE C: GRAFICO E DETTAGLIO MENSILE -->
         <div class="result-card">
-          <div class="result-header">📈 Simulazione Annuale</div>
+          <div class="result-header">📈 SIMULAZIONE MESE PER MESE</div>
           <div class="result-body">
             <div class="chart-container">
               <canvas id="savingsChart"></canvas>
             </div>
-            <div id="savings-summary" style="margin-top:20px; text-align:center">
+            <div id="monthly-details" class="monthly-details-grid">
               <!-- Filled by JS -->
             </div>
           </div>
         </div>
 
-        <div class="result-card">
-          <div class="result-header">✅ Azioni Prioritarie</div>
-          <div class="result-body" id="azioni-list">
+        <!-- SEZIONE D: RIEPILOGO ANNUALE -->
+        <div class="result-card highlighted-card">
+          <div class="result-header">💰 IL TUO POTENZIALE DI RISPARMIO</div>
+          <div class="result-body" id="riepilogo-annuale">
             <!-- Filled by JS -->
           </div>
         </div>
 
-        <button class="btn" onclick="generatePDF()">📥 Scarica Report PDF</button>
-        <button class="btn btn-secondary" onclick="resetCalculator()">↩️ Nuovo Calcolo</button>
+        <!-- SEZIONE E: AZIONI PRIORITARIE -->
+        <div class="result-card">
+          <div class="result-header">✅ COSA FARE ADESSO</div>
+          <div class="result-body" id="azioni-list-new">
+            <!-- Filled by JS -->
+          </div>
+        </div>
+
+        <!-- SEZIONE F: COME HO CALCOLATO (COLLAPSIBLE) -->
+        <div class="result-card">
+          <details class="methodology-details">
+            <summary class="result-header" style="cursor:pointer; list-style: none;">📖 Come ho calcolato questi numeri?
+            </summary>
+            <div class="result-body" id="metodologia-content">
+              <!-- Filled by JS -->
+            </div>
+          </details>
+        </div>
+
+        <!-- SEZIONE G: PULSANTI FINALI -->
+        <div class="final-buttons-grid">
+          <button class="btn" onclick="generatePDF()">📥 SCARICA REPORT PDF</button>
+          <button class="btn btn-secondary" onclick="alert('Risultati Salvati!')">💾 SALVA I TUOI RISULTATI</button>
+          <button class="btn btn-secondary" onclick="alert('Inviato alla tua email!')">📧 INVIA A EMAIL</button>
+          <button class="btn btn-outline" onclick="resetCalculator()">↩️ NUOVO CALCOLO</button>
+        </div>
       </div>
+
 
     </div>
     <div class="footer-app">

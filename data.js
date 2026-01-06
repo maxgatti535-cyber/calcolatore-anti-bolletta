@@ -41,7 +41,7 @@ const TARIFFE_REGIONI = {
     },
     "Lombardia": {
         "citta": ["Milano", "Como", "Bergamo", "Brescia"],
-        "Tutelato": { luce: 0.42, gas: 1.15, fissi: 34 },
+        "Tutelato": { luce: 0.42, gas: 1.15, fissi: 35 },
         "Libero": { luce: 0.38, gas: 1.07, fissi: 31 }
     },
     "Marche": {
