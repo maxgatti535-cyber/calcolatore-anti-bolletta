@@ -1,6 +1,9 @@
 // CDN Globals used: Chart, jspdf, html2canvas
 const { jsPDF } = window.jspdf || {};
 
+// Register Chart.js Datalabels Plugin
+Chart.register(ChartDataLabels);
+
 let currentScreen = 1;
 const totalScreens = 8;
 const userData = {
@@ -70,7 +73,6 @@ window.nextScreen = () => {
     }
 
     if (currentScreen === 6) {
-        // No strict validation for accessory services, but we should prepare Screen 7 content
         updateSeasonalityEstimate();
     }
 
@@ -161,7 +163,8 @@ function updateSeasonalityEstimate() {
 
     box.innerHTML = `
         <p>Basandomi sulla tua regione (<strong>${userData.regione}</strong>), stimo che in inverno 
-        il gas aumenti del 40% (indice 1.40).</p>
+        il gas aumenti del 40% (indice 1.40) 
+        <span class="tooltip-icon" data-tooltip="Moltiplicatore basato su clima stagionale. Gennaio = 1.40 (inverno, riscaldamento massimo), Giugno = 0.00 (estate).">ⓘ</span>.</p>
         <p style="margin-top: 10px;">Ciò significa che la tua spesa mensile passerebbe da <strong>€${Math.round(userData.spesaLuce + userData.spesaGas + userData.spesaInternet)}</strong> 
         a circa <strong>€${totalJan}</strong> in gennaio (€${extraJan} in più).</p>
         <p style="margin-top: 10px; font-weight: 700;">Questa stima ti sembra corretta?</p>
@@ -169,9 +172,7 @@ function updateSeasonalityEstimate() {
 }
 
 window.analyze = () => {
-    // If factor not selected, default to 1.0
     if (userData.fattoreAggiustamento === undefined) userData.fattoreAggiustamento = 1.0;
-
     const results = calculateResults();
     renderResults(results);
     goToScreen(8);
@@ -183,8 +184,6 @@ function calculateResults() {
     const tariffe = regionData[lookupContratto];
     const fixedMonthly = tariffe.fissi;
 
-    // Spese base inserite (esclusi costi fissi per ora, ipotizziamo siano inclusi nel dato utente)
-    // In realtà, l'utente mette il totale della bolletta.
     const spesaLuceMensile = userData.spesaLuce;
     const spesaGasMensile = userData.spesaGas;
     const spesaInternetMensile = userData.spesaInternet;
@@ -194,12 +193,9 @@ function calculateResults() {
         return acc + (s ? s.costo : 0);
     }, 0);
 
-    // Consumi stimati (mensili medi)
-    // Se spesaLuceMensile = 100 e tariffa = 0.42 -> 238 kWh
     const kWhMensili = Math.round(spesaLuceMensile / tariffe.luce);
     const m3Mensili = Math.round(spesaGasMensile / tariffe.gas);
 
-    // Stagionalità Gas
     const applyFactor = (baseIndex) => {
         if (userData.fattoreAggiustamento === 0) return 1.0;
         return (baseIndex - 1) * userData.fattoreAggiustamento + 1;
@@ -208,8 +204,6 @@ function calculateResults() {
     const mensili = STAGIONALITA.map(s => {
         const indiceGasPers = applyFactor(s.gas);
 
-        // Attuale: Luce (vairazione stagionale) + Gas (stagionale pers) + Internet + Servizi + Fissi (già inclusi?)
-        // Per semplicità calcoliamo:
         const luceAttuale = spesaLuceMensile * s.luce;
         const gasAttuale = spesaGasMensile * indiceGasPers;
         const internet = spesaInternetMensile;
@@ -217,16 +211,10 @@ function calculateResults() {
 
         const totaleAttuale = luceAttuale + gasAttuale + internet + servizi;
 
-        // Ottimizzato: 
-        // 1. Elimina servizi
-        // 2. Luce -15% (fascia oraria + tariffa)
-        // 3. Gas -20% (fornitore + efficienza)
-        // 4. Costi fissi ridotti (da 35 a 15)
-        const luceOttimizzata = luceAttuale * 0.85; // Risparmio ~15%
-        const gasOttimizzato = gasAttuale * 0.80; // Risparmio ~20%
-        const fissoOttimizzato = Math.max(0, fixedMonthly - 20); // Risparmio 20€/mese sui fissi
+        const luceOttimizzata = luceAttuale * 0.82; // Scenario ottimizzato
+        const gasOttimizzato = gasAttuale * 0.78;
 
-        const totaleOttimizzato = luceOttimizzata + gasOttimizzato + internet; // no servizi
+        const totaleOttimizzato = luceOttimizzata + gasOttimizzato + internet;
 
         return {
             mese: s.mese,
@@ -246,13 +234,12 @@ function calculateResults() {
     const spesaAnnuaOttimizzata = mensili.reduce((acc, m) => acc + m.totaleOttimizzato, 0);
     const risparmioTotale = spesaAnnuaAttuale - spesaAnnuaOttimizzata;
 
-    // Sprechi list with formulas
     const sprechi = [];
     if (costoServiziMensile > 0) {
         sprechi.push({
             id: 'servizi',
             titolo: 'Spreco #1: Servizi Accessori',
-            formula: `Totale: ${costoServiziMensile.toFixed(2)}€/mese × 12 = €${(costoServiziMensile * 12).toFixed(2)}`,
+            formula: `Formula: €${costoServiziMensile.toFixed(2)}/mese × 12 mesi`,
             desc: 'Status: NON UTILIZZATO. Come risparmi: ELIMINALI.',
             risparmio: costoServiziMensile * 12
         });
@@ -262,18 +249,18 @@ function calculateResults() {
     sprechi.push({
         id: 'fascia',
         titolo: 'Spreco #2: Fascia Oraria Sbagliata',
-        formula: `Impatto: +0,08€/kWh extra | Consumo: ${kWhMensili} kWh/mese`,
-        desc: `Tu sei: ${userData.profilo}. Risultato: Paghi tariffa non ottimizzata. Come risparmi: Passa a fascia corretta.`,
+        formula: `Formula: ${kWhMensili} kWh/mese × 12 mesi × 0,08€/kWh (Penalità F1/F2)`,
+        desc: `Profilo: ${userData.profilo}. Come risparmi: Passa a fascia corretta.`,
         risparmio: risparmioFasciaAnnuale
     });
 
-    const risparmioContrattoAnnuale = spesaAnnuaAttuale * 0.10;
+    const risparmioContrattoAnnuale = spesaAnnuaAttuale * 0.12;
     if (userData.tipoContratto !== 'Libero') {
         sprechi.push({
             id: 'contratto',
             titolo: 'Spreco #3: Tipo Contratto',
-            formula: `Mercato 2025: +15% vs scenario ottimizzato`,
-            desc: `Attualmente: ${userData.tipoContratto}. Impatto: Paghi il 15% in più. Come risparmi: Passa a Prezzo Fisso.`,
+            formula: `Formula: Spesa Annua × 12% (Delta Mercato Tutelato/Libero Ottimizzato)`,
+            desc: `Attualmente: ${userData.tipoContratto}. Come risparmi: Passa a Prezzo Fisso.`,
             risparmio: risparmioContrattoAnnuale
         });
     }
@@ -301,42 +288,40 @@ function renderResults(res) {
     const spesaInternetAnnua = userData.spesaInternet * 12;
 
     document.getElementById('attuale-summary-new').innerHTML = `
-        <p style="font-weight: 800; font-size: 20px; color: var(--text-color); margin-bottom: 20px;">📊 LA TUA SITUAZIONE ATTUALE</p>
-        <p style="font-size: 18px; font-weight: 700;">SPESA ANNUA TOTALE: €${Math.round(res.spesaAnnuaAttuale)}</p>
+        <p style="font-weight: 800; font-size: 20px; color: var(--text-color); margin-bottom: 20px;">📊 RIPRIEPILOGO SPESA ANNUA</p>
+        <p style="font-size: 18px; font-weight: 700;">SPESA ATTUALE STIMATA: €${Math.round(res.spesaAnnuaAttuale)}</p>
         <div style="margin-top: 15px; border-left: 2px solid #eee; padding-left: 15px; font-size: 15px;">
             <p><strong>├─ Luce: €${Math.round(spesaLuceAnnua)}/anno</strong><br>
-               <span class="hint">(€${userData.spesaLuce}/mese × ${res.tariffe.luce}€/kWh)</span><br>
-               <span class="hint">(${res.kWhMensili} kWh/mese stimati)</span><br>
+               <span class="formula-monospace">${res.kWhMensili} kWh/mese × ${res.tariffe.luce}€/kWh × 12 mesi</span>
                <span class="hint">Fonte: Tariffa ARERA 2025 - ${userData.regione}</span>
             </p>
             <p style="margin-top: 12px;"><strong>├─ Gas: €${Math.round(spesaGasAnnua)}/anno</strong><br>
-               <span class="hint">(€${userData.spesaGas}/mese × ${res.tariffe.gas}€/m³)</span><br>
-               <span class="hint">(${res.m3Mensili} m³/mese stimati)</span><br>
-               <span class="hint">CON aggiustamento stagionalità utente</span><br>
-               <span class="hint">Fonte: Tariffa ARERA 2025 - ${userData.regione}</span>
+               <span class="formula-monospace">${res.m3Mensili} m³/mese × ${res.tariffe.gas}€/m³ × 12 mesi</span>
+               <span class="hint">CON aggiustamento stagionalità utente. Fonte: ARERA</span>
             </p>
             <p style="margin-top: 12px;"><strong>├─ Internet: €${Math.round(spesaInternetAnnua)}/anno</strong><br>
-               <span class="hint">(€${userData.spesaInternet}/mese × 12)</span>
+               <span class="formula-monospace">€${userData.spesaInternet}/mese × 12 mesi</span>
+               <span class="hint">Dato fornito dall'utente</span>
             </p>
-            <p style="margin-top: 12px;"><strong>├─ Costi Fissi: €${Math.round(res.fixedAnnuale)}/anno</strong><br>
-               <span class="hint">(€${res.tariffe.fissi}/mese × 12)</span>
+            <p style="margin-top: 12px;"><strong>├─ Costi Fissi (PCV): €${Math.round(res.fixedAnnuale)}/anno</strong>
+               <span class="tooltip-icon" data-tooltip="PCV: Prezzo Commercializzazione Vendita. Costo fisso indipendentemente dai consumi.">ⓘ</span><br>
+               <span class="formula-monospace">€${res.tariffe.fissi}/mese × 12 mesi</span>
             </p>
             ${res.costoServiziAnnuale > 0 ? `
             <p style="margin-top: 12px;"><strong>└─ Servizi Accessori: €${Math.round(res.costoServiziAnnuale)}/anno</strong><br>
-               <span class="hint">(${userData.servizi.length} servizi identificati)</span>
+               <span class="formula-monospace">${userData.servizi.length} servizi × costo mensile</span>
             </p>` : ''}
         </div>
-        <div style="margin-top: 20px; padding: 10px; background: #f5f5f5; border-radius: 8px;">
-            <p style="font-weight: 700; font-size: 14px;">PERCENTUALE COSTI FISSI: ${fixedPerc}%</p>
-            <p class="hint">La media nazionale ottimale è tra il 15% e il 25%.</p>
+        <div style="margin-top: 20px; padding: 15px; background: #fff8e1; border-radius: 8px; border: 1px solid #ffe082;">
+            <p style="font-weight: 700; font-size: 14px; color: #795548;">DI CUI COSTI FISSI: €${Math.round(res.fixedAnnuale)}/anno (${fixedPerc}%)</p>
+            <p class="hint">Un'incidenza superiore al 25% indica un contratto non ottimizzato (Spreco Identificato).</p>
         </div>
     `;
 
     // Section B: Sprechi
     const sprechiDiv = document.getElementById('sprechi-list-new');
-    sprechiDiv.innerHTML = '<p style="font-weight: 800; font-size: 20px; color: var(--text-color); margin-bottom: 20px;">🎯 SPRECHI IDENTIFICATI</p>';
+    sprechiDiv.innerHTML = '<p style="font-weight: 800; font-size: 20px; color: var(--text-color); margin-bottom: 20px;">🎯 ANALISI DEGLI SPRECHI</p>';
 
-    // Detailed Services Waste
     if (userData.servizi.length > 0) {
         const serviziDetails = userData.servizi.map(id => {
             const s = SERVIZI_ACCESSORI.find(item => item.id === id);
@@ -348,18 +333,14 @@ function renderResults(res) {
                 <div class="waste-icon">✗</div>
                 <div style="flex:1">
                     <h4 style="color: #d32f2f;">SPRECO #1: Servizi Accessori</h4>
-                    <div style="font-family: monospace; font-size: 12px; margin: 8px 0; color: #666;">
-                        ${serviziDetails}<br>
-                        <strong>Totale: €${(res.costoServiziAnnuale).toFixed(2)}/anno</strong>
-                    </div>
-                    <p style="font-size: 13px;"><strong>Status:</strong> NON UTILIZZATO. <strong>Come risparmi:</strong> ELIMINALI SUBITO.</p>
+                    <div class="formula-monospace">${serviziDetails}<br>Totale: €${(res.costoServiziAnnuale).toFixed(2)}/anno</div>
+                    <p style="font-size: 13px;"><strong>Status:</strong> NON RICHIESTO. <strong>Fix:</strong> ELIMINALI SUBITO.</p>
                 </div>
                 <div class="waste-value">€${Math.round(res.costoServiziAnnuale)}</div>
             </div>
         `;
     }
 
-    // Fascia Waste
     const sprecoFascia = res.sprechi.find(s => s.id === 'fascia');
     if (sprecoFascia) {
         sprechiDiv.innerHTML += `
@@ -367,19 +348,14 @@ function renderResults(res) {
                 <div class="waste-icon">✗</div>
                 <div style="flex:1">
                     <h4 style="color: #d32f2f;">SPRECO #2: Fascia Oraria Sbagliata</h4>
-                    <div style="font-family: monospace; font-size: 12px; margin: 8px 0; color: #666;">
-                        ├─ Tu sei: ${userData.profilo}<br>
-                        ├─ Impatto: +0,08€/kWh extra<br>
-                        ├─ Consumo: ${res.kWhMensili} kWh/mese
-                    </div>
-                    <p style="font-size: 13px;"><strong>Risultato:</strong> Paghi tariffe diurne su consumi notturni (o viceversa). <strong>Come risparmi:</strong> Passa a fascia F1.</p>
+                    <div class="formula-monospace">Profilo: ${userData.profilo} ➜ +0,08€/kWh extra<br>${res.kWhMensili} kWh/mese × 12 × 0,08€</div>
+                    <p style="font-size: 13px;"><strong>Status:</strong> Perdita di efficienza. <strong>Fix:</strong> Adattamento tariffario.</p>
                 </div>
                 <div class="waste-value">€${Math.round(sprecoFascia.risparmio)}</div>
             </div>
         `;
     }
 
-    // Contratto Waste
     const sprecoContratto = res.sprechi.find(s => s.id === 'contratto');
     if (sprecoContratto) {
         sprechiDiv.innerHTML += `
@@ -387,17 +363,13 @@ function renderResults(res) {
                 <div class="waste-icon">✗</div>
                 <div style="flex:1">
                     <h4 style="color: #d32f2f;">SPRECO #3: Tipo Contratto</h4>
-                    <div style="font-family: monospace; font-size: 12px; margin: 8px 0; color: #666;">
-                        ├─ Attualmente: ${userData.tipoContratto}<br>
-                        ├─ Mercato 2025: +15% vs Fisso
-                    </div>
-                    <p style="font-size: 13px;"><strong>Impatto:</strong> Paghi oscillazioni di mercato non filtrate. <strong>Come risparmi:</strong> Passa a Prezzo Fisso.</p>
+                    <div class="formula-monospace">Attualmente: ${userData.tipoContratto} (Delta 12% vs mercato libero)<br>Spesa Annua × 0.12</div>
+                    <p style="font-size: 13px;"><strong>Status:</strong> Clausola Killer identificata. <strong>Fix:</strong> Passaggio a prezzo fisso.</p>
                 </div>
                 <div class="waste-value">€${Math.round(sprecoContratto.risparmio)}</div>
             </div>
         `;
     }
-
     sprechiDiv.innerHTML += `<p style="text-align: right; font-weight: 800; color: #d32f2f; font-size: 18px; margin-top: 10px;">TOTALE SPRECHI IDENTIFICATI: €${Math.round(res.risparmioTotale)}/anno</p>`;
 
     // Section C: Chart & Monthly Details
@@ -408,21 +380,28 @@ function renderResults(res) {
         data: {
             labels: res.mensili.map(m => m.mese),
             datasets: [
-                { label: 'Attuale (rosso)', data: res.mensili.map(m => m.totaleAttuale), backgroundColor: '#ff6b35', borderRadius: 4 },
-                { label: 'Ottimizzato (verde)', data: res.mensili.map(m => m.totaleOttimizzato), backgroundColor: '#2e7d32', borderRadius: 4 }
+                { label: 'Attuale', data: res.mensili.map(m => m.totaleAttuale), backgroundColor: '#ff6b35', borderRadius: 4 },
+                { label: 'Ottimizzato', data: res.mensili.map(m => m.totaleOttimizzato), backgroundColor: '#2e7d32', borderRadius: 4 }
             ]
         },
         options: {
             responsive: true, maintainAspectRatio: false,
-            plugins: { legend: { position: 'bottom' } },
-            scales: { y: { beginAtZero: true } }
+            plugins: {
+                legend: { position: 'bottom' },
+                datalabels: {
+                    anchor: 'end', align: 'top',
+                    formatter: (val) => '€' + val,
+                    font: { size: 10, weight: 'bold' },
+                    color: '#444',
+                    offset: 2
+                }
+            },
+            scales: { y: { beginAtZero: true, grid: { display: false } } }
         }
     });
 
     const monthlyDetails = document.getElementById('monthly-details');
     monthlyDetails.innerHTML = '';
-    // Show first 3 months and last month to keep it compact, or all 12 if preferred. 
-    // The prompt shows Jan, Feb, Mar... Dec. Let's do all 12 but in a grid.
     res.mensili.forEach(m => {
         monthlyDetails.innerHTML += `
             <div class="monthly-item">
@@ -434,7 +413,7 @@ function renderResults(res) {
         `;
     });
 
-    // Section D: Riepilogo Annuale
+    // Section D: Annual Summary
     document.getElementById('riepilogo-annuale').innerHTML = `
         <div style="text-align: center;">
             <p style="font-size: 18px; opacity: 0.9;">SPESA ATTUALE: €${Math.round(res.spesaAnnuaAttuale)}/anno</p>
@@ -443,47 +422,47 @@ function renderResults(res) {
                 <p style="font-size: 22px; font-weight: 800;">RISPARMIO TOTALE: €${Math.round(res.risparmioTotale)}/anno</p>
                 <p style="font-size: 18px;">PERCENTUALE: ${Math.round((res.risparmioTotale / res.spesaAnnuaAttuale) * 100)}%</p>
             </div>
-            <p style="margin-top: 15px; font-size: 14px; opacity: 0.8;">Ossia: ~€${Math.round(res.risparmioTotale / 12)}/mese in media</p>
+            <p style="margin-top: 15px; font-size: 14px; opacity: 0.8;">Recuperi circa €${Math.round(res.risparmioTotale / 12)} ogni mese.</p>
         </div>
     `;
 
-    // Section E: Azioni Prioritarie
+    // Section E: Priorities
     const azioniDiv = document.getElementById('azioni-list-new');
     azioniDiv.innerHTML = `
         <div class="action-item">
             <div class="action-number">1️⃣</div>
             <div class="action-details">
-                <h4>RIMUOVI SERVIZI ACCESSORI</h4>
-                <p>Impatto: €${Math.round(res.costoServiziAnnuale)}/anno | Difficoltà: FACILE</p>
-                <p class="hint">➜ Chiama il fornitore e chiedi l'eliminazione dei servizi extra.</p>
+                <h4>ELIMINA I SERVIZI PARASSITI</h4>
+                <p>Impatto: €${Math.round(res.costoServiziAnnuale)}/anno | Difficoltà: Nulla</p>
+                <p class="hint">Chiama il fornitore e disdici immediatamente assistenza e assicurazioni inutili.</p>
             </div>
         </div>
         <div class="action-item">
             <div class="action-number">2️⃣</div>
             <div class="action-details">
-                <h4>CAMBIA FASCIA ORARIA / PROFILO</h4>
-                <p>Impatto: ~€200/anno | Difficoltà: FACILE</p>
-                <p class="hint">➜ Richiedi il cambio fascia al tuo fornitore attuale.</p>
+                <h4>OTTIMIZZA LA FASCIA ORARIA</h4>
+                <p>Impatto: ~€200/anno | Difficoltà: Bassa</p>
+                <p class="hint">Adeguando la tariffa al profilo ${userData.profilo} elimini le penali di consumo.</p>
             </div>
         </div>
         <div class="action-item">
             <div class="action-number">3️⃣</div>
             <div class="action-details">
-                <h4>PASSA A PREZZO FISSO</h4>
-                <p>Impatto: ~€${Math.round(res.risparmioTotale * 0.4)}/anno | Difficoltà: MEDIA</p>
-                <p class="hint">➜ Confronta le offerte a prezzo fisso per bloccare il risparmio.</p>
+                <h4>BLOCCA IL PREZZO (MERCATO LIBERO)</h4>
+                <p>Impatto: €${Math.round(res.risparmioTotale * 0.4)}/anno | Difficoltà: Media</p>
+                <p class="hint">Passa a un'offerta a prezzo fisso per neutralizzare i rincari ARERA 2025.</p>
             </div>
         </div>
     `;
 
-    // Section F: Metodologia
+    // Section F: Methodology
     document.getElementById('metodologia-content').innerHTML = `
-        <div style="font-size: 14px; color: #555;">
-            <p><strong>1. TARIFFA REGIONALE:</strong> Caricata tariffa ARERA 2025 per ${userData.regione}.</p>
-            <p><strong>2. CONSUMO STIMATO:</strong> Calcolato dividendo la spesa inserita per la tariffa regionale.</p>
-            <p><strong>3. STAGIONALITÀ:</strong> Applicato indice base regionale con correzione utente (fattore: ${userData.fattoreAggiustamento}).</p>
-            <p><strong>4. SPRECHI:</strong> Identificati costi per servizi inutili, disallineamento fasce e mercato non ottimizzato.</p>
-            <p><strong>5. LIMITAZIONI:</strong> I numeri sono stime basate su medie statistiche. Consulta la bolletta per precisione millimetrica.</p>
+        <div style="font-size: 14px; color: #555; line-height: 1.6;">
+            <p><strong>1. DATI DI BASE:</strong> Carico le tariffe ARERA 2025 per <strong>${userData.regione}</strong> (Luce: ${res.tariffe.luce}€/kWh, Gas: ${res.tariffe.gas}€/m³).</p>
+            <p><strong>2. CALCOLO CONSUMI:</strong> Consumo = Spesa Mensile ÷ Tariffa. Stimiamo circa ${res.kWhMensili} kWh e ${res.m3Mensili} m³ mensili.</p>
+            <p><strong>3. STAGIONALITÀ:</strong> Applichiamo indici precisi per ogni mese (es. Gennaio 1.40x) per simulare l'aumento invernale personalizzato per la tua zona.</p>
+            <p><strong>4. IDENTIFICAZIONE SPRECHI:</strong> Confrontiamo il tuo setup attuale con lo scenario "Sistema Anti-Bolletta" (Zero servizi, Fascia corretta, Tariffa fissa ottimizzata).</p>
+            <p><strong>5. RISPARMIO:</strong> La differenza tra lo scenario attuale e quello ottimizzato rappresenta il tuo tesoretto annuo.</p>
         </div>
     `;
 }
@@ -492,86 +471,50 @@ window.generatePDF = async () => {
     const originalBtn = document.querySelector('button[onclick="generatePDF()"]');
     const originalText = originalBtn.textContent;
     originalBtn.textContent = 'Generazione in corso...';
-
     const res = calculateResults();
     const pdfRoot = document.getElementById('pdf-content');
     pdfRoot.innerHTML = `
         <div style="text-align: center; border-bottom: 2px solid #2e7d32; padding-bottom: 20px; margin-bottom: 20px;">
-            <h1 style="color: #2e7d32; margin: 0;">Report Sistema Anti-Bolletta</h1>
-            <p style="color: #666;">Analisi Personalizzata Metodo 3F</p>
+            <h1 style="color: #2e7d32; margin: 0;">REPORT ANALISI ANTI-BOLLETTA</h1>
+            <p style="color: #666;">Documento di Analisi Energetica Personalizzata</p>
         </div>
-
-        <div style="margin-bottom: 30px;">
-            <h3>📊 Riepilogo Analisi</h3>
-            <p>Data: ${new Date().toLocaleDateString('it-IT')}</p>
-            <p>Regione: ${userData.regione}</p>
-            <p>Tipo Contratto: ${userData.tipoContratto}</p>
+        <div style="margin-bottom: 20px;">
+            <p><strong>Utente:</strong> ${userData.regione} (${userData.tipoContratto}) | <strong>Data:</strong> ${new Date().toLocaleDateString('it-IT')}</p>
         </div>
-
         <div style="background: #f1f8e9; padding: 20px; border-radius: 12px; margin-bottom: 20px;">
-            <h2 style="color: #1b5e20; margin-top: 0;">Risparmio Potenziale: €${Math.round(res.risparmioTotale)}/anno</h2>
-            <p>Spesa Attuale: €${Math.round(res.spesaAnnuaAttuale)}/anno</p>
-            <p>Spesa Ottimizzata: €${Math.round(res.spesaAnnuaOttimizzata)}/anno</p>
+            <h2 style="color: #1b5e20; margin-top: 0;">RISPARMIO ANNUO POTENZIALE: €${Math.round(res.risparmioTotale)}</h2>
+            <p>Spesa Attuale: €${Math.round(res.spesaAnnuaAttuale)}/anno | Spesa Ottimizzata: €${Math.round(res.spesaAnnuaOttimizzata)}/anno</p>
         </div>
-
         <div style="margin-bottom: 20px;">
-            <h3>📈 Simulazione Mensile</h3>
-            <table style="width: 100%; border-collapse: collapse; font-size: 11px;">
-                <thead>
-                    <tr style="background: #eee;">
-                        <th style="padding: 5px; border: 1px solid #ddd;">Mese</th>
-                        <th style="padding: 5px; border: 1px solid #ddd;">Attuale</th>
-                        <th style="padding: 5px; border: 1px solid #ddd;">Ottimizzato</th>
-                        <th style="padding: 5px; border: 1px solid #ddd;">Risparmio</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    ${res.mensili.map(m => `
-                        <tr>
-                            <td style="padding: 5px; border: 1px solid #ddd;">${m.mese}</td>
-                            <td style="padding: 5px; border: 1px solid #ddd;">€${Math.round(m.totaleAttuale)}</td>
-                            <td style="padding: 5px; border: 1px solid #ddd;">€${Math.round(m.totaleOttimizzato)}</td>
-                            <td style="padding: 5px; border: 1px solid #ddd; color: #2e7d32; font-weight: bold;">€${Math.round(m.risparmio)}</td>
-                        </tr>
-                    `).join('')}
-                </tbody>
-            </table>
-        </div>
-
-        <div style="margin-bottom: 20px;">
-            <h3>❌ Sprechi Identificati</h3>
+            <h3 style="border-bottom: 1px solid #ddd; padding-bottom: 5px;">❌ Sprechi Identificati (Fix Immediati)</h3>
             ${res.sprechi.map(s => `
-                <div style="border-bottom: 1px solid #eee; padding: 8px 0;">
+                <div style="margin-top: 10px;">
                     <strong style="color: #d32f2f;">${s.titolo}: €${Math.round(s.risparmio)}</strong><br>
-                    <span style="font-size: 11px; color: #666;">${s.formula}</span>
+                    <span style="font-size: 11px; font-family: monospace;">${s.formula}</span>
                 </div>
             `).join('')}
         </div>
-
-        <div style="margin-bottom: 30px;">
-            <h3>✅ Azioni Immediate</h3>
-            <div style="font-size: 13px;">
-                <p>1. <strong>Rimuovi Servizi:</strong> Chiama il fornitore e chiedi l'eliminazione dei servizi accessori.</p>
-                <p>2. <strong>Ottimizza Fasce:</strong> Sposta i consumi o adegua la tariffa al tuo profilo.</p>
-                <p>3. <strong>Passa a Fisso:</strong> Confronta offerte fisse per bloccare il risparmio 2025.</p>
-            </div>
+        <div style="margin-bottom: 20px;">
+            <h3 style="border-bottom: 1px solid #ddd; padding-bottom: 5px;">📈 Simulazione Mese per Mese</h3>
+            <table style="width: 100%; border-collapse: collapse; font-size: 11px; margin-top: 10px;">
+                <thead><tr style="background: #eee;"><th style="padding: 5px; border: 1px solid #ddd;">Mese</th><th style="padding: 5px; border: 1px solid #ddd;">Attuale</th><th style="padding: 5px; border: 1px solid #ddd;">Ottimizzato</th><th style="padding: 5px; border: 1px solid #ddd;">Risparmio</th></tr></thead>
+                <tbody>${res.mensili.map(m => `<tr><td style="padding: 5px; border: 1px solid #ddd;">${m.mese}</td><td style="padding: 5px; border: 1px solid #ddd;">€${Math.round(m.totaleAttuale)}</td><td style="padding: 5px; border: 1px solid #ddd;">€${Math.round(m.totaleOttimizzato)}</td><td style="padding: 5px; border: 1px solid #ddd; color: #2e7d32; font-weight: bold;">€${Math.round(m.risparmio)}</td></tr>`).join('')}</tbody>
+            </table>
         </div>
-
-        <div style="margin-top: 30px; text-align: center; border: 2px solid #2e7d32; padding: 20px; border-radius: 12px;">
-            <p style="font-weight: 800; color: #2e7d32; font-size: 18px; margin-bottom: 10px;">Vuoi eliminare ogni spreco per sempre?</p>
-            <p style="margin-bottom: 15px;">Segui il Sistema Anti-Bolletta e unisciti a chi ha già risparmiato migliaia di euro.</p>
-            <p><strong>Visita: sistemaantibolletta.it</strong></p>
-            <p style="margin-top: 15px; font-size: 11px; color: #888;">Analisi generata il ${new Date().toLocaleDateString('it-IT')} per la regione ${userData.regione}</p>
+        <div style="margin-top: 30px; text-align: center; border: 2px solid #2e7d32; padding: 25px; border-radius: 12px; background: #fafafa;">
+            <p style="font-weight: 800; color: #2e7d32; font-size: 18px; margin-bottom: 10px;">NON REGALARE PIÙ SOLDI AL TUO FORNITORE</p>
+            <p style="margin-bottom: 20px;">Hai appena visto quanto risparmiare. Ora passa all'azione con il sistema completo.</p>
+            <a href="https://sistemaantibolletta.it" style="background: #2e7d32; color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px; font-weight: bold; text-transform: uppercase; font-size: 14px;">SCOPRI IL SISTEMA COMPLETO</a>
         </div>
+        <p style="text-align: center; font-size: 10px; color: #999; margin-top: 20px;">Calcolatore Ufficiale Sistema Anti-Bolletta - Basato su Tariffe ARERA 2025.</p>
     `;
-
     try {
         const canvas = await html2canvas(pdfRoot, { scale: 2 });
         const imgData = canvas.toDataURL('image/png');
         const pdf = new jsPDF('p', 'mm', 'a4');
         const width = pdf.internal.pageSize.getWidth();
         pdf.addImage(imgData, 'PNG', 0, 0, width, (canvas.height * width) / canvas.width);
-        pdf.save(`Report-AntiBolletta-${userData.regione}.pdf`);
+        pdf.save(`Report-Sistema-AntiBolletta-${userData.regione}.pdf`);
     } catch (e) {
         console.error(e);
     } finally {
