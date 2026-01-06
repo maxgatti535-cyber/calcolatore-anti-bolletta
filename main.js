@@ -10,6 +10,8 @@ const userData = {
     spesaLuce: 0,
     spesaGas: 0,
     spesaInternet: 0,
+    prezzoLuceManuale: null,
+    prezzoGasManuale: null,
     tipoContratto: '',
     regione: '',
     servizi: [],
@@ -60,6 +62,8 @@ window.nextScreen = () => {
         userData.spesaLuce = luce;
         userData.spesaGas = gas;
         userData.spesaInternet = internet;
+        userData.prezzoLuceManuale = parseFloat(document.getElementById('prezzo-luce-manuale').value) || null;
+        userData.prezzoGasManuale = parseFloat(document.getElementById('prezzo-gas-manuale').value) || null;
     }
 
     if (currentScreen === 4 && !userData.tipoContratto) {
@@ -133,7 +137,7 @@ function init() {
 
     const servicesGroup = document.getElementById('servizi-group');
     if (servicesGroup) {
-        servicesGroup.innerHTML = ''; // Clear previous
+        servicesGroup.innerHTML = '';
         SERVIZI_ACCESSORI.forEach(s => {
             const label = document.createElement('label');
             label.className = 'option-card';
@@ -155,9 +159,7 @@ function updateSeasonalityEstimate() {
     title.textContent = `Verifichiamo la stagionalità in ${userData.regione}`;
 
     const gasImpact = userData.spesaGas / (userData.spesaLuce + userData.spesaGas + userData.spesaInternet || 1);
-    const gasImpactPerc = Math.round(gasImpact * 100);
 
-    // Base winter increase for January (index 1.40)
     const extraJan = Math.round(userData.spesaGas * 0.40);
     const totalJan = Math.round(userData.spesaLuce + userData.spesaGas + userData.spesaInternet + extraJan);
 
@@ -188,13 +190,26 @@ function calculateResults() {
     const spesaGasMensile = userData.spesaGas;
     const spesaInternetMensile = userData.spesaInternet;
 
+    // --- LOGICA BENCHMARK CONSUMI ---
+    const benchmarks = {
+        'Notturno': { luce: 160, gas: 70 },
+        'Diurno': { luce: 240, gas: 120 },
+        'Sempre': { luce: 380, gas: 200 }
+    };
+    const profiloBenchmark = benchmarks[userData.profilo] || benchmarks['Diurno'];
+
+    // Se l'utente ha inserito il prezzo manuale, lo usiamo. 
+    // Altrimenti stimiamo il suo consumo dal benchmark del profilo.
+    const tariffaCalcolataLuce = userData.prezzoLuceManuale || (spesaLuceMensile / profiloBenchmark.luce);
+    const tariffaCalcolataGas = userData.prezzoGasManuale || (spesaGasMensile / profiloBenchmark.gas);
+
+    const kWhMensili = Math.round(spesaLuceMensile / (userData.prezzoLuceManuale || tariffe.luce));
+    const m3Mensili = Math.round(spesaGasMensile / (userData.prezzoGasManuale || tariffe.gas));
+
     const costoServiziMensile = userData.servizi.reduce((acc, id) => {
         const s = SERVIZI_ACCESSORI.find(item => item.id === id);
         return acc + (s ? s.costo : 0);
     }, 0);
-
-    const kWhMensili = Math.round(spesaLuceMensile / tariffe.luce);
-    const m3Mensili = Math.round(spesaGasMensile / tariffe.gas);
 
     const applyFactor = (baseIndex) => {
         if (userData.fattoreAggiustamento === 0) return 1.0;
@@ -203,17 +218,13 @@ function calculateResults() {
 
     const mensili = STAGIONALITA.map(s => {
         const indiceGasPers = applyFactor(s.gas);
-
         const luceAttuale = spesaLuceMensile * s.luce;
         const gasAttuale = spesaGasMensile * indiceGasPers;
         const internet = spesaInternetMensile;
         const servizi = costoServiziMensile;
-
         const totaleAttuale = luceAttuale + gasAttuale + internet + servizi;
-
-        const luceOttimizzata = luceAttuale * 0.82; // Scenario ottimizzato
+        const luceOttimizzata = luceAttuale * 0.82;
         const gasOttimizzato = gasAttuale * 0.78;
-
         const totaleOttimizzato = luceOttimizzata + gasOttimizzato + internet;
 
         return {
@@ -268,14 +279,11 @@ function calculateResults() {
     // --- COMPARISON LOGIC ---
     const tariffaAreraLuce = tariffe.luce;
     const tariffaAreraGas = tariffe.gas;
-
-    // Tariffe Libero (benchmark)
     const tariffaLiberoLuce = tariffaAreraLuce * 0.90;
     const tariffaLiberoGas = tariffaAreraGas * 0.93;
 
-    // Risparmio potenziale da cambio mercato
-    const risparmioContrattoLuceAnnuale = (tariffaAreraLuce - tariffaLiberoLuce) * (kWhMensili * 12);
-    const risparmioContrattoGasAnnuale = (tariffaAreraGas - tariffaLiberoGas) * (m3Mensili * 12);
+    const risparmioContrattoLuceAnnuale = (tariffaCalcolataLuce - tariffaLiberoLuce) * (kWhMensili * 12);
+    const risparmioContrattoGasAnnuale = (tariffaCalcolataGas - tariffaLiberoGas) * (m3Mensili * 12);
     const risparmioMercatoTotale = risparmioContrattoLuceAnnuale + risparmioContrattoGasAnnuale;
 
     return {
@@ -285,6 +293,8 @@ function calculateResults() {
         m3Mensili,
         spesaLuceMensile,
         spesaGasMensile,
+        tariffaCalcolataLuce,
+        tariffaCalcolataGas,
         spesaAnnuaAttuale,
         spesaAnnuaOttimizzata,
         risparmioTotale,
@@ -330,27 +340,35 @@ function renderResults(res) {
             </p>
             ${res.costoServiziAnnuale > 0 ? `
             <p style="margin-top: 12px;"><strong>└─ Servizi Accessori: €${Math.round(res.costoServiziAnnuale)}/anno</strong><br>
-               <span class="formula-monospace">${userData.servizi.length} servizi × costo mensile</span>
+               <span class="formula-monospace">${userData.servizi.length} servizi identificati</span>
             </p>` : ''}
         </div>
         <div style="margin-top: 20px; padding: 15px; background: #fff8e1; border-radius: 8px; border: 1px solid #ffe082;">
             <p style="font-weight: 700; font-size: 14px; color: #795548;">DI CUI COSTI FISSI: €${Math.round(res.fixedAnnuale)}/anno (${fixedPerc}%)</p>
-            <p class="hint">Un'incidenza superiore al 25% indica un contratto non ottimizzato (Spreco Identificato).</p>
+            <p class="hint">Un'incidenza superiore al 25% indica un contratto non ottimizzato.</p>
         </div>
     `;
 
     // NUOVA SEZIONE: ANALISI TARIFFA PERSONALE
+    const statusLuce = res.tariffaCalcolataLuce > res.tariffaAreraLuce * 1.05 ?
+        '<span class="status-badge status-warn">⚠️ PAGHI PIÙ DELLA MEDIA</span>' :
+        '<span class="status-badge status-ok">✅ IN LINEA CON ARERA</span>';
+
+    const statusGas = res.tariffaCalcolataGas > res.tariffaAreraGas * 1.05 ?
+        '<span class="status-badge status-warn">⚠️ PAGHI PIÙ DELLA MEDIA</span>' :
+        '<span class="status-badge status-ok">✅ IN LINEA CON ARERA</span>';
+
     document.getElementById('analisi-tariffa-content').innerHTML = `
         <div style="margin-bottom: 25px;">
             <h4 style="color: #1565c0; margin-bottom: 10px;">🔍 ANALISI LUCE</h4>
             <div style="border-left: 3px solid #64b5f6; padding-left: 15px;">
                 <p>La tua tariffa CALCOLATA:<br>
-                <span class="formula-monospace">€${res.spesaLuceMensile} ÷ ${res.kWhMensili} kWh = ${res.tariffaAreraLuce.toFixed(2)}€/kWh</span>
-                <span class="status-badge status-ok">✅ IN LINEA CON ARERA</span></p>
+                <span class="formula-monospace">€${res.spesaLuceMensile} ÷ Profilo ${userData.profilo} = ${res.tariffaCalcolataLuce.toFixed(2)}€/kWh</span>
+                ${statusLuce}</p>
                 
                 <p style="margin-top: 15px;">Migliore offerta Mercato Libero:<br>
                 <span class="formula-monospace">Benchmark: ${res.tariffaLiberoLuce.toFixed(2)}€/kWh</span>
-                <span class="status-badge status-opportunity">⭐ RISPARMIO: €${Math.round(res.risparmioContrattoLuceAnnuale)}/anno</span></p>
+                <span class="status-badge status-opportunity">⭐ RISPARMIO: €${Math.max(0, Math.round(res.risparmioContrattoLuceAnnuale))}/anno</span></p>
             </div>
         </div>
 
@@ -358,52 +376,39 @@ function renderResults(res) {
             <h4 style="color: #1565c0; margin-bottom: 10px;">🔍 ANALISI GAS</h4>
             <div style="border-left: 3px solid #64b5f6; padding-left: 15px;">
                 <p>La tua tariffa CALCOLATA:<br>
-                <span class="formula-monospace">€${res.spesaGasMensile} ÷ ${res.m3Mensili} m³ = ${res.tariffaAreraGas.toFixed(2)}€/m³</span>
-                <span class="status-badge status-ok">✅ IN LINEA CON ARERA</span></p>
+                <span class="formula-monospace">€${res.spesaGasMensile} ÷ Profilo ${userData.profilo} = ${res.tariffaCalcolataGas.toFixed(2)}€/m³</span>
+                ${statusGas}</p>
                 
                 <p style="margin-top: 15px;">Migliore offerta Mercato Libero:<br>
                 <span class="formula-monospace">Benchmark: ${res.tariffaLiberoGas.toFixed(2)}€/m³</span>
-                <span class="status-badge status-opportunity">⭐ RISPARMIO: €${Math.round(res.risparmioContrattoGasAnnuale)}/anno</span></p>
+                <span class="status-badge status-opportunity">⭐ RISPARMIO: €${Math.max(0, Math.round(res.risparmioContrattoGasAnnuale))}/anno</span></p>
             </div>
         </div>
 
         <table class="comparison-table">
             <thead>
-                <tr>
-                    <th>Componente</th>
-                    <th>Attuale</th>
-                    <th>ARERA</th>
-                    <th>Libero</th>
-                </tr>
+                <tr><th>Componente</th><th>Tua Tariffa</th><th>ARERA</th><th>Libero</th></tr>
             </thead>
             <tbody>
                 <tr>
                     <td><strong>Luce</strong></td>
-                    <td class="val-highlight">${res.tariffaAreraLuce.toFixed(2)}€</td>
+                    <td class="val-highlight">${res.tariffaCalcolataLuce.toFixed(2)}€</td>
                     <td>${res.tariffaAreraLuce.toFixed(2)}€</td>
                     <td style="color: var(--primary)">${res.tariffaLiberoLuce.toFixed(2)}€</td>
                 </tr>
                 <tr>
                     <td><strong>Gas</strong></td>
-                    <td class="val-highlight">${res.tariffaAreraGas.toFixed(2)}€</td>
+                    <td class="val-highlight">${res.tariffaCalcolataGas.toFixed(2)}€</td>
                     <td>${res.tariffaAreraGas.toFixed(2)}€</td>
                     <td style="color: var(--primary)">${res.tariffaLiberoGas.toFixed(2)}€</td>
                 </tr>
             </tbody>
         </table>
 
-        <div style="margin-top: 20px; font-weight: 700; color: #1565c0;">
-            <p>• Tu sei in linea con le tariffe ARERA ${res.regione}.</p>
-            <p>• Passare al Mercato Libero potrebbe farti risparmiare <strong>€${Math.round(res.risparmioMercatoTotale)}/anno</strong>.</p>
-        </div>
-
         <div class="caution-box">
             <h5>⚠️ ATTENZIONE AL MERCATO LIBERO</h5>
             <p>Questa sezione mostra il POTENZIALE risparmio se passi al mercato libero.</p>
-            <p style="margin-top: 8px;"><strong>MA RICORDA:</strong><br>
-            ✓ ARERA è fisso e garantito per legge.<br>
-            ✗ Il Mercato Libero può avere rimodulazioni e clausole nascoste.<br>
-            ✗ Meglio se risolvi gli sprechi (servizi, fascia) PRIMA di cambiare.</p>
+            <p style="margin-top: 8px;"><strong>MA RICORDA:</strong> ARERA è sicuro e garantito. Il Mercato Libero può subire rimodulazioni improvvise. Risolvi gli sprechi prima di cambiare.</p>
         </div>
     `;
 
@@ -461,7 +466,7 @@ function renderResults(res) {
     }
     sprechiDiv.innerHTML += `<p style="text-align: right; font-weight: 800; color: #d32f2f; font-size: 18px; margin-top: 10px;">TOTALE SPRECHI IDENTIFICATI: €${Math.round(res.risparmioTotale)}/anno</p>`;
 
-    // Section C: Chart & Monthly Details
+    // Section C: Chart
     if (chartInstance) chartInstance.destroy();
     const ctx = document.getElementById('savingsChart').getContext('2d');
     chartInstance = new Chart(ctx, {
@@ -479,10 +484,9 @@ function renderResults(res) {
                 legend: { position: 'bottom' },
                 datalabels: {
                     anchor: 'end', align: 'top',
-                    formatter: (val) => '€' + val,
+                    formatter: (val) => '€' + Math.round(val),
                     font: { size: 10, weight: 'bold' },
-                    color: '#444',
-                    offset: 2
+                    color: '#444'
                 }
             },
             scales: { y: { beginAtZero: true, grid: { display: false } } }
@@ -497,61 +501,46 @@ function renderResults(res) {
                 <h5>${m.mese}</h5>
                 <div class="monthly-row"><span>Attuale:</span> <strong>€${Math.round(m.totaleAttuale)}</strong></div>
                 <div class="monthly-row"><span>Ottimizzato:</span> <strong>€${Math.round(m.totaleOttimizzato)}</strong></div>
-                <div class="monthly-row savings"><span>RISPARMIO:</span> <span>€${Math.round(m.risparmio)} (${Math.round((m.risparmio / m.totaleAttuale) * 100)}%)</span></div>
+                <div class="monthly-row savings"><span>RISPARMIO:</span> <span>€${Math.round(m.risparmio)}</span></div>
             </div>
         `;
     });
 
-    // Section D: Annual Summary
+    // Final summary
     document.getElementById('riepilogo-annuale').innerHTML = `
         <div style="text-align: center;">
             <p style="font-size: 18px; opacity: 0.9;">SPESA ATTUALE: €${Math.round(res.spesaAnnuaAttuale)}/anno</p>
             <p style="font-size: 24px; font-weight: 900; margin: 10px 0;">SPESA OTTIMIZZATA: €${Math.round(res.spesaAnnuaOttimizzata)}/anno</p>
             <div style="background: rgba(255,255,255,0.2); padding: 15px; border-radius: 12px; margin-top: 15px;">
                 <p style="font-size: 22px; font-weight: 800;">RISPARMIO TOTALE: €${Math.round(res.risparmioTotale)}/anno</p>
-                <p style="font-size: 18px;">PERCENTUALE: ${Math.round((res.risparmioTotale / res.spesaAnnuaAttuale) * 100)}%</p>
             </div>
-            <p style="margin-top: 15px; font-size: 14px; opacity: 0.8;">Recuperi circa €${Math.round(res.risparmioTotale / 12)} ogni mese.</p>
         </div>
     `;
 
-    // Section E: Priorities
+    // Priorities
     const azioniDiv = document.getElementById('azioni-list-new');
     azioniDiv.innerHTML = `
         <div class="action-item">
             <div class="action-number">1️⃣</div>
             <div class="action-details">
                 <h4>ELIMINA I SERVIZI PARASSITI</h4>
-                <p>Impatto: €${Math.round(res.costoServiziAnnuale)}/anno | Difficoltà: Nulla</p>
-                <p class="hint">Chiama il fornitore e disdici immediatamente assistenza e assicurazioni inutili.</p>
+                <p>Impatto: €${Math.round(res.costoServiziAnnuale)}/anno</p>
             </div>
         </div>
         <div class="action-item">
             <div class="action-number">2️⃣</div>
             <div class="action-details">
                 <h4>OTTIMIZZA LA FASCIA ORARIA</h4>
-                <p>Impatto: ~€200/anno | Difficoltà: Bassa</p>
-                <p class="hint">Adeguando la tariffa al profilo ${userData.profilo} elimini le penali di consumo.</p>
-            </div>
-        </div>
-        <div class="action-item">
-            <div class="action-number">3️⃣</div>
-            <div class="action-details">
-                <h4>BLOCCA IL PREZZO (MERCATO LIBERO)</h4>
-                <p>Impatto: €${Math.round(res.risparmioTotale * 0.4)}/anno | Difficoltà: Media</p>
-                <p class="hint">Passa a un'offerta a prezzo fisso per neutralizzare i rincari ARERA 2025.</p>
+                <p>Profilo: ${userData.profilo}</p>
             </div>
         </div>
     `;
 
-    // Section F: Methodology
+    // Methodology
     document.getElementById('metodologia-content').innerHTML = `
-        <div style="font-size: 14px; color: #555; line-height: 1.6;">
-            <p><strong>1. DATI DI BASE:</strong> Carico le tariffe ARERA 2025 per <strong>${userData.regione}</strong> (Luce: ${res.tariffe.luce}€/kWh, Gas: ${res.tariffe.gas}€/m³).</p>
-            <p><strong>2. CALCOLO CONSUMI:</strong> Consumo = Spesa Mensile ÷ Tariffa. Stimiamo circa ${res.kWhMensili} kWh e ${res.m3Mensili} m³ mensili.</p>
-            <p><strong>3. STAGIONALITÀ:</strong> Applichiamo indici precisi per ogni mese (es. Gennaio 1.40x) per simulare l'aumento invernale personalizzato per la tua zona.</p>
-            <p><strong>4. IDENTIFICAZIONE SPRECHI:</strong> Confrontiamo il tuo setup attuale con lo scenario "Sistema Anti-Bolletta" (Zero servizi, Fascia corretta, Tariffa fissa ottimizzata).</p>
-            <p><strong>5. RISPARMIO:</strong> La differenza tra lo scenario attuale e quello ottimizzato rappresenta il tuo tesoretto annuo.</p>
+        <div style="font-size: 14px; color: #555;">
+            <p><strong>1. DATI:</strong> Tariffe ARERA 2025 per ${userData.regione}.</p>
+            <p><strong>2. CONFRONTO:</strong> Abbiamo usato un benchmark di consumo per il profilo ${userData.profilo} per calcolare la tua tariffa reale.</p>
         </div>
     `;
 }
@@ -559,48 +548,28 @@ function renderResults(res) {
 window.generatePDF = async () => {
     const originalBtn = document.querySelector('button[onclick="generatePDF()"]');
     const originalText = originalBtn.textContent;
-    originalBtn.textContent = 'Generazione in corso...';
+    originalBtn.textContent = 'Generazione...';
     const res = calculateResults();
     const pdfRoot = document.getElementById('pdf-content');
     pdfRoot.innerHTML = `
-        <div style="text-align: center; border-bottom: 2px solid #2e7d32; padding-bottom: 20px; margin-bottom: 20px;">
-            <h1 style="color: #2e7d32; margin: 0;">REPORT ANALISI ANTI-BOLLETTA</h1>
-            <p style="color: #666;">Documento di Analisi Energetica Personalizzata</p>
+        <div style="text-align: center; border-bottom: 2px solid #2e7d32; padding-bottom: 10px; margin-bottom: 10px;">
+            <h1 style="color: #2e7d32; margin: 0;">REPORT ANTI-BOLLETTA</h1>
         </div>
-        <div style="margin-bottom: 20px;">
-            <p><strong>Utente:</strong> ${userData.regione} (${userData.tipoContratto}) | <strong>Data:</strong> ${new Date().toLocaleDateString('it-IT')}</p>
+        <div style="background: #f1f8e9; padding: 15px; border-radius: 8px; margin-bottom: 10px;">
+            <h2 style="color: #1b5e20;">RISPARMIO ANNUO: €${Math.round(res.risparmioTotale)}</h2>
         </div>
-        <div style="background: #f1f8e9; padding: 20px; border-radius: 12px; margin-bottom: 20px;">
-            <h2 style="color: #1b5e20; margin-top: 0;">RISPARMIO ANNUO POTENZIALE: €${Math.round(res.risparmioTotale)}</h2>
-            <p>Spesa Attuale: €${Math.round(res.spesaAnnuaAttuale)}/anno | Spesa Ottimizzata: €${Math.round(res.spesaAnnuaOttimizzata)}/anno</p>
+        <div style="margin-bottom: 15px; font-size: 12px;">
+            <h3>🔍 ANALISI TARIFFE</h3>
+            <p>Luce: ${res.tariffaCalcolataLuce.toFixed(2)}€/kWh (ARERA: ${res.tariffaAreraLuce.toFixed(2)}€)</p>
+            <p>Gas: ${res.tariffaCalcolataGas.toFixed(2)}€/m³ (ARERA: ${res.tariffaAreraGas.toFixed(2)}€)</p>
         </div>
-        <div style="margin-bottom: 20px; padding: 15px; background: #e3f2fd; border-radius: 12px; font-size: 13px;">
-            <h3 style="color: #1565c0; margin-top: 0;">🔍 LA TUA TARIFFA REALE vs MEDIA</h3>
-            <p>Luce: ${res.tariffaAreraLuce.toFixed(2)}€/kWh | Gas: ${res.tariffaAreraGas.toFixed(2)}€/m³</p>
-            <p style="color: #0277bd; font-weight: bold; margin-top: 5px;">⭐ Potenziale Risparmio da Cambio Mercato: €${Math.round(res.risparmioMercatoTotale)}/anno</p>
+         <div style="margin-bottom: 15px; font-size: 12px;">
+            <h3>❌ SPRECHI</h3>
+            ${res.sprechi.map(s => `<p><strong>${s.titolo}</strong>: €${Math.round(s.risparmio)}/anno</p>`).join('')}
         </div>
-        <div style="margin-bottom: 20px;">
-            <h3 style="border-bottom: 1px solid #ddd; padding-bottom: 5px;">❌ Sprechi Identificati (Fix Immediati)</h3>
-            ${res.sprechi.map(s => `
-                <div style="margin-top: 10px;">
-                    <strong style="color: #d32f2f;">${s.titolo}: €${Math.round(s.risparmio)}</strong><br>
-                    <span style="font-size: 11px; font-family: monospace;">${s.formula}</span>
-                </div>
-            `).join('')}
+        <div style="text-align: center; margin-top: 20px;">
+            <p><strong>Visita: sistemaantibolletta.it</strong></p>
         </div>
-        <div style="margin-bottom: 20px;">
-            <h3 style="border-bottom: 1px solid #ddd; padding-bottom: 5px;">📈 Simulazione Mese per Mese</h3>
-            <table style="width: 100%; border-collapse: collapse; font-size: 11px; margin-top: 10px;">
-                <thead><tr style="background: #eee;"><th style="padding: 5px; border: 1px solid #ddd;">Mese</th><th style="padding: 5px; border: 1px solid #ddd;">Attuale</th><th style="padding: 5px; border: 1px solid #ddd;">Ottimizzato</th><th style="padding: 5px; border: 1px solid #ddd;">Risparmio</th></tr></thead>
-                <tbody>${res.mensili.map(m => `<tr><td style="padding: 5px; border: 1px solid #ddd;">${m.mese}</td><td style="padding: 5px; border: 1px solid #ddd;">€${Math.round(m.totaleAttuale)}</td><td style="padding: 5px; border: 1px solid #ddd;">€${Math.round(m.totaleOttimizzato)}</td><td style="padding: 5px; border: 1px solid #ddd; color: #2e7d32; font-weight: bold;">€${Math.round(m.risparmio)}</td></tr>`).join('')}</tbody>
-            </table>
-        </div>
-        <div style="margin-top: 30px; text-align: center; border: 2px solid #2e7d32; padding: 25px; border-radius: 12px; background: #fafafa;">
-            <p style="font-weight: 800; color: #2e7d32; font-size: 18px; margin-bottom: 10px;">NON REGALARE PIÙ SOLDI AL TUO FORNITORE</p>
-            <p style="margin-bottom: 20px;">Hai appena visto quanto risparmiare. Ora passa all'azione con il sistema completo.</p>
-            <a href="https://sistemaantibolletta.it" style="background: #2e7d32; color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px; font-weight: bold; text-transform: uppercase; font-size: 14px;">SCOPRI IL SISTEMA COMPLETO</a>
-        </div>
-        <p style="text-align: center; font-size: 10px; color: #999; margin-top: 20px;">Calcolatore Ufficiale Sistema Anti-Bolletta - Basato su Tariffe ARERA 2025.</p>
     `;
     try {
         const canvas = await html2canvas(pdfRoot, { scale: 2 });
@@ -608,7 +577,7 @@ window.generatePDF = async () => {
         const pdf = new jsPDF('p', 'mm', 'a4');
         const width = pdf.internal.pageSize.getWidth();
         pdf.addImage(imgData, 'PNG', 0, 0, width, (canvas.height * width) / canvas.width);
-        pdf.save(`Report-Sistema-AntiBolletta-${userData.regione}.pdf`);
+        pdf.save(`Report-AntiBolletta.pdf`);
     } catch (e) {
         console.error(e);
     } finally {
