@@ -31,14 +31,16 @@
         <div class="badge-bonus">Bonus Esclusivo Ebook</div>
         <img src="./logo.png" alt="Logo Anti-Bolletta" style="width: 120px; margin-bottom: 20px;">
         <h1>Sistema Anti-Bolletta</h1>
-        <p class="subtitle">Applica il <strong>Metodo 3F</strong> per individuare le Clausole Killer e abbattere i costi
-          energetici in 2 minuti.</p>
+        <p class="subtitle">
+          Questa applicazione ti permette di <strong>applicare correttamente il Metodo 3F</strong>
+          sulla tua situazione reale, evitando gli errori più comuni che fanno fallire il risparmio.
+        </p>
         <button class="btn" id="btn-start" onclick="nextScreen()">Inizia Analisi 3F</button>
       </div>
 
       <!-- Screen 2: Region (NUOVA POSIZIONE) -->
       <div id="screen-2" class="screen">
-        <p class="step-indicator">Fase 1: Filtra (Geolocalizzazione)</p>
+        <p class="step-indicator">Fase 1 – Metodo 3F: Filtrare</p>
         <h2>Dove vivi in Italia?</h2>
         <p class="subtitle">Le tariffe variano per regione. Indica la tua per calcoli precisi.</p>
 
@@ -56,7 +58,7 @@
 
       <!-- Screen 3: Current Data (SPOSTATA) -->
       <div id="screen-3" class="screen">
-        <p class="step-indicator">Fase 1: Filtra</p>
+        <p class="step-indicator">Fase 1 – Metodo 3F: Filtrare</p>
         <h2>Quanto stai pagando adesso?</h2>
         <p class="subtitle">Inserisci le tue spese medie mensili per identificare sprechi nascosti.</p>
 
@@ -92,7 +94,7 @@
 
       <!-- Screen 4: Contract Type -->
       <div id="screen-4" class="screen">
-        <p class="step-indicator">Fase 1: Filtra (Contratto)</p>
+        <p class="step-indicator">Fase 1 – Metodo 3F: Filtrare</p>
         <h2>Qual è il tuo tipo di contratto?</h2>
         <p class="subtitle">La struttura del tuo contratto nasconde spesso costi fissi (PCV) fuori mercato.</p>
 
@@ -125,7 +127,7 @@
 
       <!-- Screen 5: Usage Profile -->
       <div id="screen-5" class="screen">
-        <p class="step-indicator">Fase 3: Fissa (Profilo d'Uso)</p>
+        <p class="step-indicator">Fase 3 – Metodo 3F: Frequenza (quando intervenire)</p>
         <h2>Quando usi più energia?</h2>
         <p class="subtitle">Adatta il tuo stile di consumo per proteggere il risparmio nel lungo periodo.</p>
 
@@ -158,7 +160,7 @@
 
       <!-- Screen 6: Accessory Services -->
       <div id="screen-6" class="screen">
-        <p class="step-indicator">Fase 2: Fronteggia (Servizi Parassiti)</p>
+        <p class="step-indicator">Fase 2 – Metodo 3F: Focalizzare</p>
         <h2>Hai servizi accessori?</h2>
         <p class="subtitle">Identifica ogni servizio extra che gonfia le tue fatture senza darti valore reale.</p>
 
@@ -172,7 +174,7 @@
 
       <!-- Screen 7: Seasonality Adjustment (NUOVA!) -->
       <div id="screen-7" class="screen">
-        <p class="step-indicator">Fase 4: Stagionalità</p>
+        <p class="step-indicator">Fase 3 – Metodo 3F: Frequenza (Stagionalità)</p>
         <h2 id="seasonality-title">Verifichiamo la stagionalità della tua regione</h2>
         <div id="seasonality-estimate-box" class="info-box" style="margin-bottom: 20px;">
           <!-- Content populated by JS -->
@@ -280,6 +282,11 @@
             </div>
           </details>
         </div>
+
+        <p class="hint" style="margin-top:12px; text-align: center; color: #444; margin-bottom: 20px;">
+          Nota: questi risultati sono validi se applicati nel <strong>momento giusto</strong>.
+          Anticipare o rimandare le decisioni può annullare parte del risparmio.
+        </p>
 
         <!-- SEZIONE G: PULSANTI FINALI -->
         <div class="final-buttons-grid">
