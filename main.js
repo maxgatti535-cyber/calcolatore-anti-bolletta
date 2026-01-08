@@ -585,5 +585,23 @@ window.generatePDF = async () => {
     }
 };
 
+window.activateMonitoring = () => {
+    const email = document.getElementById('monitor-email').value;
+    if (!email || !email.includes('@')) {
+        alert('Per favore inserisci un indirizzo email valido.');
+        return;
+    }
+
+    const section = document.getElementById('monitoring-section');
+    section.innerHTML = `
+        <div style="text-align: center; padding: 20px;">
+            <div style="font-size: 40px; margin-bottom: 15px;">🛡️</div>
+            <h3 style="color: #81c784;">SCUDO TEMPORALE ATTIVATO</h3>
+            <p style="font-size: 14px; opacity: 0.9;">Il sistema monitorerà i cicli stagionali e ti avviserà via email (${email}) nei momenti giusti per intervenire.</p>
+            <p class="monitoring-note" style="margin-top:20px;">"Il calcolo è corretto, ma il successo del Metodo 3F dipende ora dal tuo tempismo."</p>
+        </div>
+    `;
+};
+
 init();
 window.resetCalculator = () => location.reload();

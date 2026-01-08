@@ -683,6 +683,87 @@ select:focus {
   font-weight: 800;
 }
 
+/* SISTEMA DI MONITORAGGIO 3F */
+.monitoring-card {
+  background: #1a237e;
+  /* Midnight Blue */
+  color: #fff;
+  border-radius: var(--border-radius);
+  padding: 24px;
+  margin: 30px 0;
+  box-shadow: 0 10px 40px rgba(26, 35, 126, 0.2);
+  border-left: 6px solid #81c784;
+  /* Sage Green */
+}
+
+.monitoring-card h3 {
+  color: #81c784;
+  margin-bottom: 12px;
+  font-size: 18px;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+}
+
+.monitoring-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 15px;
+  margin: 20px 0;
+}
+
+@media (max-width: 600px) {
+  .monitoring-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+.monitoring-input {
+  background: rgba(255, 255, 255, 0.1);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  color: #fff;
+  padding: 12px;
+  border-radius: 8px;
+  width: 100%;
+  font-size: 14px;
+}
+
+.monitoring-input::placeholder {
+  color: rgba(255, 255, 255, 0.5);
+}
+
+.timing-badge {
+  display: inline-block;
+  background: #81c784;
+  color: #1a237e;
+  padding: 4px 12px;
+  border-radius: 20px;
+  font-size: 11px;
+  font-weight: 800;
+  margin-bottom: 15px;
+}
+
+.monitoring-note {
+  font-size: 12px;
+  opacity: 0.7;
+  margin-top: 15px;
+  line-height: 1.4;
+  font-style: italic;
+}
+
+.btn-monitoring {
+  background: #81c784;
+  color: #1a237e;
+  border: none;
+  width: 100%;
+  margin-top: 10px;
+  font-weight: 800;
+}
+
+.btn-monitoring:hover {
+  background: #66bb6a;
+  transform: translateY(-2px);
+}
+
 .footer-app {
   text-align: center;
   padding: 24px;
